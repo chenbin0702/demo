@@ -266,7 +266,7 @@
       >
     </div>
     <!-- 寄件/收件地址 -->
-    <el-dialog :title="AddTitle" :visible.sync="showAddress" width="70%">
+    <el-dialog :title="AddTitle" :visible.sync="showAddress" width="70%" @close="closeMethod">
       <el-form :model="searchForm" inline ref="searchForm">
         <el-form-item label="姓名" prop="name">
           <el-input
@@ -299,15 +299,19 @@
           </el-button>
         </el-form-item>
       </el-form>
-      <el-table :data="list" style="width: 100%">
-        <el-table-column label="选择"> </el-table-column>
+      <el-table :data="list" style="width: 100%" v-loading="loading">
+        <el-table-column label="选择">
+          <template slot-scope="scope">
+            <el-checkbox v-model="scope.row.defaultStatus" disabled></el-checkbox>
+          </template>
+        </el-table-column>
         <el-table-column
           prop="name"
           :label="AddTitle === '寄件地址' ? '寄件人姓名' : '收件人姓名'"
         >
         </el-table-column>
         <el-table-column
-          prop="phone"
+          prop="mobileNo"
           :label="AddTitle === '寄件地址' ? '寄件人电话' : '收件人电话'"
         >
         </el-table-column>
@@ -315,46 +319,63 @@
           prop="province"
           :label="AddTitle === '寄件地址' ? '寄件省' : '收件省'"
         >
+        <template slot-scope="scope">
+         {{ getAreaListChange(scope.row).province}}
+        </template>
         </el-table-column>
         <el-table-column
           prop="city"
           :label="AddTitle === '寄件地址' ? '寄件市' : '收件市'"
         >
+        <template slot-scope="scope">
+          {{ getAreaListChange(scope.row).city}}
+        </template>
         </el-table-column>
         <el-table-column
           prop="district"
           :label="AddTitle === '寄件地址' ? '寄件区' : '收件区'"
         >
+          <template slot-scope="scope">
+          {{ getAreaListChange(scope.row).city}}
+        </template>
         </el-table-column>
         <el-table-column
           prop="street"
           :label="AddTitle === '寄件地址' ? '寄件街道/乡镇' : '收件街道/乡镇'"
         >
+        <template>
+          /
+        </template>
         </el-table-column>
         <el-table-column
           prop="detail"
           :label="AddTitle === '寄件地址' ? '寄件详细地址' : '收件详细地址'"
         >
+        <template slot-scope="scope">
+          {{ getAreaListChange(scope.row).detail}}
+        </template>
         </el-table-column>
         <el-table-column label="操作">
-          <template>
-            <el-button type="danger" icon="el-icon-delete">删除</el-button>
+          <template slot-scope="scope">
+            <el-button type="text"  @click="deleteAddress(scope.row)">删除</el-button>
+            <el-button type="text" @click="updataUserDefault(scope.row)">设置为默认地址</el-button>
           </template>
         </el-table-column>
       </el-table>
       <el-pagination
         @current-change="handleCurrentChange"
         :current-page="pageNum"
-        :page-size="20"
+        :page-size="pageSize"
+        @size-change="handleSizeChange"
         layout="total, sizes, prev, pager, next, jumper"
-        :total="400"
+        :total="total"
         class="pagination"
       >
       </el-pagination>
       <!--  -->
       <div slot="footer" class="dialog-footer">
-        <el-button @click="showAddress = false">取 消</el-button>
-        <el-button type="primary" @click="showAddress = false">确 定</el-button>
+        <el-button @click="showAddress = false;loading=true">取 消</el-button>
+        <el-button type="primary" @click="submitAddressInfo">确 定</el-button>
       </div>
     </el-dialog>
     <!--新增寄件地址  append-to-body -->
@@ -439,12 +460,12 @@
     </el-dialog>
     <!-- 订单弹窗 -->
 
-    <el-dialog title="" :visible.sync="showOrderToast" width="50%">
-      <OrderToast/>
+    <el-dialog title="" :visible.sync="showOrderToast" width="70%">
+      <OrderToast :info="expressInfo" />
       <span slot="footer" class="dialog-footer">
         <el-button @click="showOrderToast = false">取 消</el-button>
         <el-button type="primary" @click="showOrderToast = false"
-          >确 定</el-button
+          >下单</el-button
         >
       </span>
     </el-dialog>
@@ -465,17 +486,22 @@ import {
   userAddress,
   OrderDemand,
   getAddressPage,
+  getUserAddress,
+  deleteUserAddress,
+  updatedefaultAddress
 } from "@/api/express/address";
 export default {
   data() {
     return {
       regionData,
+      loading:true,
       showAddress: false,
       showAddAddress: false,
       showOrderToast: false,
       list: [],
-      pageNum: 0,
-      pageSize: 100,
+      pageNum: 1,
+      pageSize: 10,
+      total:0,
       AddTitle: "",
       searchForm: {
         name: "",
@@ -517,6 +543,7 @@ export default {
         volumeLong: "",
         volumeWidth: "",
       },
+      expressInfo:{},
       addAddressRules: addAddressRules,
       receiverRules: receiverRules,
       senderRules: senderRules,
@@ -615,8 +642,10 @@ export default {
       this.showAddress = true;
       if (type === 0) {
         this.AddTitle = "寄件地址";
+       this.getAddressList()
       } else {
         this.AddTitle = "收件地址";
+        this.getAddressList()
       }
     },
     changeAreaCode(arr) {
@@ -654,6 +683,12 @@ export default {
         .catch((err) => {
           console.log(err);
         });
+    },
+    // 关闭 地址弹窗回调
+    closeMethod()
+    {
+       this.loading=true
+       this.pageNum=1
     },
     // 提交表单
     submitForm() {
@@ -699,11 +734,11 @@ export default {
                   console.log(newData);
                   OrderDemand(newData)
                     .then((res) => {
-                      console.log(res);
+                      this.expressInfo=res.data
+                      console.log(this.expressInfo);
                       this.showOrderToast = true;
                     })
                     .catch((err) => {
-                      this.showOrderToast = true;
                       console.log(err);
                     });
                 } else {
@@ -721,10 +756,11 @@ export default {
     },
     // 添加地址
     sumbitAddAddress() {
-      const address = this.addAddressFrom;
+      const {address} = this.addAddressFrom;
       const city = CodeToText[address[1]];
       const district = CodeToText[address[2]];
       const province = CodeToText[address[0]];
+      const type=this.AddTitle==='寄件地址'?0:1
       const data = {
         city,
         defaultStatus: false,
@@ -737,7 +773,7 @@ export default {
         phone: this.addAddressFrom.phone,
         province,
         street: this.addAddressFrom.street,
-        type: 0,
+        type
       };
       console.log(1122312);
       this.$refs["addAddressFrom"].validate((valid) => {
@@ -745,12 +781,14 @@ export default {
           userAddress(data)
             .then((res) => {
               console.log(res);
+              this.loading=true
               this.$message({
                 type: "success",
                 message: "新增地址成功",
               });
               this.showAddAddress = false;
               this.resetData();
+              this.getAddressList()
             })
             .catch((err) => {
               this.$message({
@@ -766,6 +804,77 @@ export default {
         }
       });
     },
+    // 删除用户地址
+    deleteAddress(data)
+    {
+      this.$confirm('确认删除该地址？')
+          .then(_ => {
+            deleteUserAddress(data.userAddressId).then(res=>{
+                console.log(res);
+                this.$message({
+          message: '删除成功',
+          type: 'success'
+        });
+        this.loading=true
+            this.getAddressList()
+            }).catch(err=>{
+
+            })
+          })
+          .catch(_ => {});
+
+    },
+    // 更新用户默认地址
+    updataUserDefault(data)
+    {
+      updatedefaultAddress(data.userAddressId).then(res=>{
+        this.$message({
+          message: '更新默认地址成功',
+          type: 'success'
+        })
+        this.loading=true
+        this.getAddressList()
+      }).catch(err=>err)
+    },
+    // 提交用户地址
+    submitAddressInfo()
+    {
+      const data=this.list.filter(item=>item.defaultStatus)
+      console.log(data);
+        getUserAddress(data[0].userAddressId).then(res=>{
+          let obj=res.data
+          console.log(obj);
+          const oldData = this.singletonForm;
+            const areaList = [
+              obj.province,
+              obj.city,
+              obj.district,
+          ];
+          const newList = this.changeAreaCode(areaList);
+          let newData={}
+          if(this.AddTitle==='寄件地址')
+          {
+             newData = {
+            senderMobile: obj.phone,
+            sender: obj.name,
+            senderAddress: obj.detail,
+            senderAreaOptions: newList,
+          };
+          }
+          else
+          {
+             newData = {
+             receiverMobile: obj.phone,
+              receiver: obj.name,
+              receiveAddress: obj.detail,
+              receiverAreaOptions: newList,
+          };
+
+          }
+          this.addAddressFrom = Object.assign(oldData, newData);
+          this.showAddress=false
+        }).catch(err=>err)
+    },
     // 取消添加地址
     cancelAddAddress() {
       this.showAddAddress = false;
@@ -774,34 +883,79 @@ export default {
     searchAddress() {
       const name = this.searchForm.name;
       const phone = this.searchForm.phone;
-
-      this.getAddressList(this.pageNum, this.pageSize, name, phone);
+      this.getAddressList(name, phone);
       // 重置搜索表单数据
       this.$refs["searchForm"].resetFields();
     },
     // 获取数据
-    getAddressList(pageNum, pageSize, ...searchTerm) {
+    getAddressList(...Term) {
       const type =
         this.AddTitle === "寄件地址" ? "SENDER_ADDRESS" : "RECIPIENT_ADDRESS";
       const data = {
         type,
-        pageNum,
-        pageSize,
+        pageNum:this.pageNum,
+        pageSize:this.pageSize
       };
-      const params = { ...data, ...searchTerm };
+      let params;
+      if(Term!=='')
+      {
+        const addData={
+        searchTerm:Term[0]===''?Term[1]:Term[0],
+        }
+       params = { ...data, ...addData};
+      }
+      else{
+        params={...data}
+      }
       getAddressPage(params)
         .then((res) => {
-          console.log(res);
+          this.list=res.data.list
+          this.total=res.data.total
+          this.loading=false
         })
         .catch((err) => {
           console.log(err);
         });
     },
+    getAreaListChange(obj)
+    {
+      console.log(obj);
+      let {recommend}=obj
+      let data
+      if(recommend)
+      {
+        let reg=/.+?(省|市|区|自治区|自治州|县|旗|会)/g
+        let str=`${recommend.match(reg)[0]}${recommend.match(reg)[1]}${recommend.match(reg)[2]}`
+        console.log(str,"str");
+        let detail=recommend.split(str)[1]
+        data={
+        province:recommend.match(reg)[0],
+        city:recommend.match(reg)[1],
+        district:recommend.match(reg)[2],
+        detail
+        }
+      }
+      else{
+        data={
+          province:'',
+          city:'',
+          district:'',
+          detail:''
+        }
+      }
+      return data
+    },
     // 分页栏跳转到 某一页
     handleCurrentChange(e) {
       console.log(e);
       this.pageNum = e;
-      this.getAddressList(this.pageNum, this.pageSize);
+      this.getAddressList();
+    },
+    // 分页面大小改变
+    handleSizeChange(e)
+    {
+       this.pageSize=e
+       this.getAddressList();
     },
     // 重置数据
     resetData() {
