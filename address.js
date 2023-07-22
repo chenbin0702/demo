@@ -52,3 +52,11 @@ export function updatedefaultAddress(userAddressId) {
     method: 'put',
   })
 }
+// 查运费 /cps/web/order/query-cost
+export function  QueryCost(data) {
+  return request({
+    url: '/cps/web/order/query-cost',
+    method: 'post',
+    data: data
+  })
+}

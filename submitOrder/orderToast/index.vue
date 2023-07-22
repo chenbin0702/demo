@@ -8,22 +8,9 @@
         <div class="right" v-for="(item1,index1) in item" :key="item1.channelId" @click="hanldeChange(index,index1)">
           <div class="right-item" :class="{'active':item1.checked}">
             <el-card class="box-card" shadow="hover">
-            <el-row>
-              <el-col :span="12">
                 <div>估计金额:<span class="font">{{ item1.estimationAmount }}</span></div>
-              </el-col>
-              <el-col :span="12">
-                <div>拆分原始金额:<span class="font">{{ item1.splitOriginAmount }}</span></div>
-              </el-col>
-            </el-row>
-            <el-row class="mt">
-              <el-col :span="12" >
                 <div >{{ item1.opinion }}</div>
-              </el-col>
-              <el-col :span="12">
                 <div>{{ item1.prohibit}}</div>
-              </el-col>
-            </el-row>
           </el-card>
           </div>
         </div>
@@ -123,12 +110,13 @@ export default {
 
       .right-item
       {
-      width: 300px;
+      width: 220px;
       margin-right: 10px;
       margin-bottom: 10px;
       .el-card
       {
-        min-height:150px;
+        min-height:120px;
+        font-size: 15px;
         border-radius: 20px !important;
       }
       }

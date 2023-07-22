@@ -299,10 +299,11 @@
           </el-button>
         </el-form-item>
       </el-form>
-      <el-table :data="list" style="width: 100%" v-loading="loading">
-        <el-table-column label="选择">
+      <el-table :data="list" style="width: 100%" v-loading="loading"
+      @row-click="singleElection">
+        <el-table-column label="选择"  width="55" align="center">
           <template slot-scope="scope">
-            <el-checkbox v-model="scope.row.defaultStatus" disabled></el-checkbox>
+           <el-radio v-model="templateSelection" :label="scope.row.userAddressId">{{  }}</el-radio>
           </template>
         </el-table-column>
         <el-table-column
@@ -336,7 +337,7 @@
           :label="AddTitle === '寄件地址' ? '寄件区' : '收件区'"
         >
           <template slot-scope="scope">
-          {{ getAreaListChange(scope.row).city}}
+          {{ getAreaListChange(scope.row).district}}
         </template>
         </el-table-column>
         <el-table-column
@@ -460,8 +461,11 @@
     </el-dialog>
     <!-- 订单弹窗 -->
 
-    <el-dialog title="" :visible.sync="showOrderToast" width="70%">
-      <OrderToast :info="expressInfo" />
+    <el-dialog title="" :visible.sync="showOrderToast" width="80%" class="toast">
+      <div class="order-toast">
+        <OrderToast :info="expressInfo" />
+      </div>
+
       <span slot="footer" class="dialog-footer">
         <el-button @click="showOrderToast = false">取 消</el-button>
         <el-button type="primary" @click="showOrderToast = false"
@@ -542,12 +546,15 @@ export default {
         volumeHeight: "",
         volumeLong: "",
         volumeWidth: "",
+
       },
       expressInfo:{},
       addAddressRules: addAddressRules,
       receiverRules: receiverRules,
       senderRules: senderRules,
       InfoRules: InfoRules,
+      templateSelection:'',
+      checkList:[],
     };
   },
   components:{
@@ -689,6 +696,13 @@ export default {
     {
        this.loading=true
        this.pageNum=1
+    },
+    // 单选框
+    singleElection(row)
+    {
+      this.templateSelection=row.userAddressId
+      this.checkList=this.list.filter(item=>item.userAddressId===row.userAddressId)
+      console.log(this.checkList);
     },
     // 提交表单
     submitForm() {
@@ -839,9 +853,8 @@ export default {
     // 提交用户地址
     submitAddressInfo()
     {
-      const data=this.list.filter(item=>item.defaultStatus)
-      console.log(data);
-        getUserAddress(data[0].userAddressId).then(res=>{
+      const data=this.checkList[0]
+        getUserAddress(data.userAddressId).then(res=>{
           let obj=res.data
           console.log(obj);
           const oldData = this.singletonForm;
@@ -919,14 +932,12 @@ export default {
     },
     getAreaListChange(obj)
     {
-      console.log(obj);
       let {recommend}=obj
       let data
       if(recommend)
       {
         let reg=/.+?(省|市|区|自治区|自治州|县|旗|会)/g
         let str=`${recommend.match(reg)[0]}${recommend.match(reg)[1]}${recommend.match(reg)[2]}`
-        console.log(str,"str");
         let detail=recommend.split(str)[1]
         data={
         province:recommend.match(reg)[0],
@@ -947,7 +958,6 @@ export default {
     },
     // 分页栏跳转到 某一页
     handleCurrentChange(e) {
-      console.log(e);
       this.pageNum = e;
       this.getAddressList();
     },
@@ -995,5 +1005,25 @@ export default {
 }
 .pagination {
   margin-top: 20px;
+}
+.toast
+{
+  height: 900px;
+  .order-toast
+  {
+    height: 700px;
+    overflow: hidden;
+    overflow-y:auto
+  }
+  .dialog-footer
+  {
+    height: 100px;
+    .el-button
+    {
+      width: 80px;
+      height: 50px;
+      border-radius: 10px;
+    }
+  }
 }
 </style>
